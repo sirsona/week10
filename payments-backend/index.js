@@ -39,6 +39,38 @@ app.post("/mpesa/stk", async (req, res) => {
   }
 });
 
+const processedCheckouts = new Set();
+app.post("/mpesa/callback", (req, res) => {
+  const callback = req.body.Body?.stkCallback;
+  if (!callback) return res.status(400).end();
+
+  const checkoutId = callback.CheckoutRequestID;
+  if (processedCheckouts.has(checkoutId)) {
+    console.log("Duplicate callback:", checkoutId);
+    return res.json({ status: "Already processed" });
+  }
+
+  const resultCode = callback.ResultCode;
+  if (resultCode === 0) {
+    const metadata = callback.CallbackMetadata?.Item || [];
+    const amountItem = metadata.find((i) => i.Name === "Amount");
+    const receiptItem = metadata.find((i) => i.Name === "MpesaReceiptNumber");
+    const phoneItem = metadata.find((i) => i.Name === "PhoneNumber");
+
+    const AmountReceived = amountItem?.Value;
+
+    console.log(
+      `Payment received: ${AmountReceived} from ${phoneItem?.Value}, ref ${receiptItem?.Value}`,
+    );
+
+    processedCheckouts.add(checkoutId);
+  } else {
+    console.log(`Payment failed: code ${resultCode}`);
+  }
+
+  res.json({ status: "ok" });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server on ${PORT}`);
