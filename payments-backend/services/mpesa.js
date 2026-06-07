@@ -1,4 +1,3 @@
-require("dotenv").config();
 const axios = require("axios");
 
 async function getToken() {
@@ -16,7 +15,7 @@ async function getToken() {
   return res.data.access_token;
 }
 
-async function initialStkPush(phone, amount, accountRef) {
+async function initiateStkPush({ phone, amount, accountRef, description }) {
   const token = await getToken();
   const timestamp = new Date()
     .toISOString()
@@ -30,12 +29,12 @@ async function initialStkPush(phone, amount, accountRef) {
 
   const payload = {
     BusinessShortCode: shortcode,
-    password: password,
-    TimeStamp: timestamp,
+    Password: password,
+    Timestamp: timestamp,
     TransactionType: "CustomerPayBillOnline",
     Amount: amount,
     PartyA: phone,
-    PartB: shortcode,
+    PartyB: shortcode,
     PhoneNumber: phone,
     CallBackURL: `${process.env.PUBLIC_URL}/mpesa/callback`,
     AccountReference: accountRef,
@@ -43,10 +42,12 @@ async function initialStkPush(phone, amount, accountRef) {
   };
 
   const res = await axios.post(
-    "https://sanbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+    "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
     payload,
     { headers: { Authorization: `Bearer ${token}` } },
   );
+
+  return res.data;
 }
 
-module.exports = { getToken, initialStkPush };
+module.exports = { getToken, initiateStkPush };
