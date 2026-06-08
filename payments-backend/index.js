@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 
 const { initiateStkPush } = require("./services/mpesa");
+const { generateReceipt } = require("./services/receipt");
 
 const app = express();
 
@@ -69,6 +70,24 @@ app.post("/mpesa/callback", (req, res) => {
   }
 
   res.json({ status: "ok" });
+});
+
+app.get("/mpesa/receipt/:checkoutId", async (req, res) => {
+  // TODO Day 4: look up the real payment from a store
+
+  const pdf = await generateReceipt({
+    phone: "254708374149",
+    amount: 100,
+    reference: req.params.checkoutId,
+    date: new Date().toISOString(),
+  });
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="receipt-${req.params.checkoutId}.pdf"`,
+  );
+  res.send(pdf);
 });
 
 const PORT = process.env.PORT || 3001;
