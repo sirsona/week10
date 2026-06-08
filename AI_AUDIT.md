@@ -33,7 +33,7 @@ Handles payment request initiation.
 - Validates phone number using `/^2547\d{8}$/`
 - Validates amount range (1 – 150,000 KES)
 - Calls STK Push service in `services/mpesa.js`
-- Returns Daraja **response** to client
+- Returns Daraja response to client
 
 ### Callback Handler (`POST /mpesa/callback`)
 
@@ -62,7 +62,7 @@ Handles payment confirmation from Safaricom.
 
 ### services/receipt.js — student
 
-- All money fields (phone, amount, reference)
+- **All** money fields (phone, amount, reference)
 - PDF generation with pdfkit
 
 ### index.js — student
