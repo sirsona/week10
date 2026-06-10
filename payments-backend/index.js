@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const { initiateStkPush } = require("./services/mpesa");
 const { generateReceipt } = require("./services/receipt");
+const { savePayment, getPayment } = require("./services/store");
 
 const app = express();
 
@@ -33,6 +34,14 @@ app.post("/mpesa/stk", async (req, res) => {
       accountRef: "TEST",
       description: "Test payment",
     });
+
+    //save
+    savePayment(result.CheckoutRequestID, {
+      phone,
+      amount,
+      status: "pending",
+      requestAt: new Date().toISOString(),
+    });
     res.json(result);
   } catch (err) {
     console.error(err.response?.data || err.message);
@@ -41,33 +50,54 @@ app.post("/mpesa/stk", async (req, res) => {
 });
 
 const processedCheckouts = new Set();
+
 app.post("/mpesa/callback", (req, res) => {
   const callback = req.body.Body?.stkCallback;
   if (!callback) return res.status(400).end();
 
   const checkoutId = callback.CheckoutRequestID;
-  if (processedCheckouts.has(checkoutId)) {
-    console.log("Duplicate callback:", checkoutId);
-    return res.json({ status: "Already processed" });
+
+  const existing = getPayment(checkoutId);
+  if (!existing) {
+    console.warn("Callback for unknown checkoutId:", checkoutId);
+    return res.json({ status: "Unknown" });
+  }
+
+  if (existing.status !== "pending") {
+    console.log("Duplicate callback", checkoutId);
+    return res.json({ status: "already processed" });
   }
 
   const resultCode = callback.ResultCode;
   if (resultCode === 0) {
     const metadata = callback.CallbackMetadata?.Item || [];
     const amountItem = metadata.find((i) => i.Name === "Amount");
+    const amountReceived = amountItem?.Value;
+
     const receiptItem = metadata.find((i) => i.Name === "MpesaReceiptNumber");
-    const phoneItem = metadata.find((i) => i.Name === "PhoneNumber");
+    const receipt = receiptItem?.Value;
 
-    const AmountReceived = amountItem?.Value;
-
-    console.log(
-      `Payment received: ${AmountReceived} from ${phoneItem?.Value}, ref ${receiptItem?.Value}`,
-    );
-
-    processedCheckouts.add(checkoutId);
+    if (Number(amountReceived) !== Number(existing.amount)) {
+      console.log(`AMOUNT MISMATCH: expected ${existing.amount}`);
+      savePayment(checkoutId, {
+        ...existing,
+        status: "mismatch",
+        amountReceived,
+        receipt,
+      });
+    } else {
+      savePayment(checkoutId, {
+        ...existing,
+        status: "paid",
+        amountReceived,
+        receipt,
+        paidAt: new Date().toISOString(),
+      });
+    }
   } else {
-    console.log(`Payment failed: code ${resultCode}`);
+    savePayment(checkoutId, { ...existing, status: "failed", resultCode });
   }
+
 
   res.json({ status: "ok" });
 });
