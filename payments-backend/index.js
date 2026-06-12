@@ -112,13 +112,17 @@ app.get("/mpesa/status/:checkoutId", (req, res) => {
 app.get("/mpesa/receipt/:checkoutId", async (req, res) => {
   // TODO Day 4: look up the real payment from a store
 
-  const pdf = await generateReceipt({
-    phone: "254708374149",
-    amount: 100,
-    reference: req.params.checkoutId,
-    date: new Date().toISOString(),
-  });
 
+  const payment = getPayment(req.params.checkoutId);
+  if (!payment || payment.status !== "paid") {
+    return res.status(404).send("Not Found or not  yet paid")
+  }
+  const pdf = await generateReceipt({
+    phone: payment.phone,
+    amount: payment.amount,
+    reference: payment.receipt,
+    date: payment.paidAt
+  })
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
