@@ -6,6 +6,7 @@ function PayForm() {
   const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
   const [checkoutId, setCheckoutId] = useState("");
+  const [paymentComplete, setPaymentComplete] = useState(false);
 
   async function handlePay(e) {
     e.preventDefault();
@@ -24,7 +25,17 @@ function PayForm() {
         setStatus("success");
         setMessage(`STK sent. Checkout ID: ${data.CheckoutRequestID}`);
         setCheckoutId(data.CheckoutRequestID);
-        // TODO Day 4: pool for completion
+
+        // Start polling for payment completion
+        pollStatus(data.CheckoutRequestID)
+          .then((result) => {
+            setPaymentComplete(true);
+            setMessage(`Payment successful! Receipt: ${result.receipt}`);
+          })
+          .catch((err) => {
+            setStatus("error");
+            setMessage(`Payment failed: ${err.message}`);
+          });
       } else {
         setStatus("error");
         setMessage(data.error || "Failed to send STK");
@@ -33,6 +44,22 @@ function PayForm() {
       setStatus("error");
       setMessage(err.message);
     }
+  }
+
+  async function pollStatus(checkoutId) {
+    for (let i = 0; i < 30; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const res = await fetch(
+        `http://localhost:3001/mpesa/status/${checkoutId}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "paid") return data;
+        if (data.status === "failed" || data.status === "mismatch")
+          throw new Error(data.status);
+      }
+    }
+    throw new Error("Time out");
   }
 
   return (
@@ -55,7 +82,7 @@ function PayForm() {
         {status === "pending" ? "Sending..." : "Pay with M-Pesa"}
       </button>
       <p>{message}</p>
-      {checkoutId && status === "success" && (
+      {checkoutId && paymentComplete && (
         <a
           href={`http://localhost:3001/mpesa/receipt/${checkoutId}`}
           target="_blank"
