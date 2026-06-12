@@ -49,7 +49,6 @@ app.post("/mpesa/stk", async (req, res) => {
   }
 });
 
-const processedCheckouts = new Set();
 
 app.post("/mpesa/callback", (req, res) => {
   const callback = req.body.Body?.stkCallback;
@@ -102,6 +101,14 @@ app.post("/mpesa/callback", (req, res) => {
   res.json({ status: "ok" });
 });
 
+app.get("/mpesa/status/:checkoutId", (req, res) => {
+  const payment = getPayment(req.params.checkoutId)
+  if (!payment) return res.status(404).json({ error: "Not found" })
+  res.send(payment)
+})
+
+
+//
 app.get("/mpesa/receipt/:checkoutId", async (req, res) => {
   // TODO Day 4: look up the real payment from a store
 
@@ -111,6 +118,7 @@ app.get("/mpesa/receipt/:checkoutId", async (req, res) => {
     reference: req.params.checkoutId,
     date: new Date().toISOString(),
   });
+
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
