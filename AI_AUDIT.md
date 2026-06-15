@@ -69,3 +69,9 @@ Handles payment confirmation from Safaricom.
 
 - Receipt endpoint `/mpesa/receipt/:checkoutId`
 - Generates PDF using real payment data
+
+## Day 5 Security Audit
+
+Were any secret committed?
+
+- No -> the audit found references to secret names, but not the secrets themselves.
