@@ -1,1 +1,0 @@
-FAKE_SECRET_KEY=supersecret123
